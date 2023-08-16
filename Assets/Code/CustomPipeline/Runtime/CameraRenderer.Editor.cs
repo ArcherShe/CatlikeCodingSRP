@@ -20,6 +20,9 @@ partial class CameraRenderer
 
     private string SampleName{ get; set; }
 
+    /// <summary>
+    /// 绘制不支持的shader
+    /// </summary>
     void DrawUnsupportedShaders ()
     {
         if( errorMaterial == null )
@@ -38,6 +41,9 @@ partial class CameraRenderer
         context.DrawRenderers( cullingResults, ref drawingSettings, ref filteringSettings );
     }
 
+    /// <summary>
+    /// scene视图绘制小图标
+    /// </summary>
     void DrawGizmos()
     {
         if( Handles.ShouldRenderGizmos() )
@@ -47,6 +53,9 @@ partial class CameraRenderer
         }
     }
 
+    /// <summary>
+    /// scene视口
+    /// </summary>
     void PrepareForSceneWindow()
     {
         if( camera.cameraType == CameraType.SceneView )
@@ -55,6 +64,9 @@ partial class CameraRenderer
         }
     }
 
+    /// <summary>
+    /// 准备buffer
+    /// </summary>
     void PrepareBuffer()
     {
         // Profiler.BeginSample( "Editor Only" );
