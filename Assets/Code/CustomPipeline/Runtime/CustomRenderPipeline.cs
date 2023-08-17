@@ -12,6 +12,9 @@ public class CustomRenderPipeline : RenderPipeline
         this.useGPUInstancing = useGPUInstancing;
         // 启用批处理(启用动态批处理需关闭此项)
         GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
+        
+        //设置颜色空间为线性
+        GraphicsSettings.lightsUseLinearIntensity = true;
     }
     protected override void Render( ScriptableRenderContext context, Camera[] cameras )
     {

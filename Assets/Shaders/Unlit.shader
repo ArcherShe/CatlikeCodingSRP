@@ -7,7 +7,7 @@ Shader "CustomRP/Unlit"{
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #include "ShaderLibrary/UnlitPass.hlsl"
+            #include "Pass//UnlitPass.hlsl"
             ENDHLSL
         }
     }
