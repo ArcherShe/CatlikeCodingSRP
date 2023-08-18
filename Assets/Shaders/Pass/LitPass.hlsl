@@ -113,7 +113,7 @@ float4 frag(v2f input) : SV_TARGET
     #endif
     surface.vieDirection = normalize(_WorldSpaceCameraPos - input.positionWS);
     // surface.color = base.rgb;
-    surface.color = _BaseColor.rgb;
+    surface.color = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial,_BaseColor.rgb);
     surface.alpha = base.a;
     surface.metallic = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial,_Metallic);
     surface.smoothness = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Smoothness);
