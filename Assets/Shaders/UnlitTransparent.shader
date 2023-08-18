@@ -17,7 +17,7 @@ Shader "CustomRP/UnlitTransparent"{
             #pragma multi_compile_instancing
             #pragma vertex vert
             #pragma fragment frag
-            #include "ShaderLibrary/UnlitTransparentPass.hlsl"
+            #include "Pass//UnlitTransparentPass.hlsl"
             ENDHLSL
         }
     }

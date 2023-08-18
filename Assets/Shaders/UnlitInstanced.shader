@@ -8,7 +8,7 @@ Shader "CustomRP/UnlitInstances"{
             #pragma multi_compile_instancing
             #pragma vertex vert
             #pragma fragment frag
-            #include "ShaderLibrary/UnlitInstancedPass.hlsl"
+            #include "Pass//UnlitInstancedPass.hlsl"
             ENDHLSL
         }
     }
