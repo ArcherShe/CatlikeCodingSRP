@@ -1,5 +1,9 @@
 fileFormatVersion: 2
+<<<<<<< Updated upstream
 guid: a95fcdb41b6758a43955dae8b0ce5bab
+=======
+guid: f0b7b07298814b3418101d3978d6d2d0
+>>>>>>> Stashed changes
 ShaderIncludeImporter:
   externalObjects: {}
   userData: 
