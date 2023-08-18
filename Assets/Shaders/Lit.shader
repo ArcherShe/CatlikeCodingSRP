@@ -10,7 +10,7 @@ Shader "CustomRP/Lit"{
         [Enum(UnityEngine.Rendering.BlendMode)]_SrcBlend("Src Blend", Float) = 1
         [Enum(UnityEngine.Rendering.BlendMode)]_DstBlend("Dst Blend", Float) = 0
         [Enum(Off, 0, On, 1)]_ZWrite("Z Write", Float) = 1
-        [Toggle(_PREMULTIPLY_ALPHA)]_PREMULTIPLY_ALPHA("Premultiply Alpah", Float)= 1
+        [Toggle(_PREMULTIPLY_ALPHA)]_PremultiplyAlpha("Premultiply Alpah", Float)= 1
     }
     
     CustomEditor "CustomShaderGUI"
@@ -21,8 +21,8 @@ Shader "CustomRP/Lit"{
             ZWrite [_ZWrite]
             HLSLPROGRAM
             #pragma shader_feature _CLIPPING
-            #pragma multi_compile_instancing
             #pragma shader_feature _PREMULTIPLY_ALPHA
+            #pragma multi_compile_instancing
             #pragma target 3.5
             #pragma vertex vert
             #pragma fragment frag
