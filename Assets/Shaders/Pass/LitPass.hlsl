@@ -22,6 +22,7 @@ UNITY_INSTANCING_BUFFER_START(UnityPerMaterial)
     UNITY_DEFINE_INSTANCED_PROP(float, _Cutoff)
     UNITY_DEFINE_INSTANCED_PROP(float, _Metallic)
     UNITY_DEFINE_INSTANCED_PROP(float, _Smoothness)
+    UNITY_DEFINE_INSTANCED_PROP(float, _PremultiplyAlpha)
 UNITY_INSTANCING_BUFFER_END(UnityPerMaterial)
 
 CBUFFER_START(_CustomLight)
@@ -76,11 +77,15 @@ float OneMinusReflectivity(float metallic)
     return range - metallic * range;
 }
 
-BRDF GetBRDF(Surface surface)
+BRDF GetBRDF(Surface surface, bool applyAlphaToDiffuse = false)
 {
     BRDF brdf;
     float oneMinuseReflectivity = OneMinusReflectivity(surface.metallic);
     brdf.diffuse = surface.color * oneMinuseReflectivity;
+    if( applyAlphaToDiffuse )
+    {
+        brdf.diffuse *= surface.alpha;
+    }
     brdf.specular = lerp(MIN_REFLECTIVITY, surface.color, surface.metallic);
     float perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(surface.smoothness);
     brdf.roughness = PerceptualRoughnessToRoughness(perceptualRoughness);
@@ -112,13 +117,16 @@ float4 frag(v2f input) : SV_TARGET
     clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
     #endif
     surface.vieDirection = normalize(_WorldSpaceCameraPos - input.positionWS);
-    // surface.color = base.rgb;
-    surface.color = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial,_BaseColor.rgb);
+    surface.color = base.rgb;
+    // surface.color = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial,_BaseColor.rgb);
     surface.alpha = base.a;
     surface.metallic = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial,_Metallic);
     surface.smoothness = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Smoothness);
-    
+    #if defined(_PREMULTIPLY_ALPHA)
+    BRDF brdf = GetBRDF(surface, true);
+    #else
     BRDF brdf = GetBRDF(surface);
+    #endif
     float3 color = GetLighting(surface, brdf);
     return float4(color, surface.alpha);
 }
