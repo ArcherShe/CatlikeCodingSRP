@@ -6,7 +6,8 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
-#include "ShaderLibrary/UnityInput.hlsl"
+#include "../ShaderLibrary/UnityInput.hlsl"
+#include "../ShaderLibrary/Shadow.hlsl"
 
 TEXTURE2D(_BaseMap);
 SAMPLER(sampler_BaseMap);
@@ -30,6 +31,7 @@ CBUFFER_START(_CustomLight)
     int _DirectionalLightCount;
     float4 _DirectionalLightColors[MAX_DIRECTIONAL_LIGHT_COUNT];
     float4 _DirectionalLightDirections[MAX_DIRECTIONAL_LIGHT_COUNT];
+    float4 _DirectionalLightShadowData[MAX_DIRECTIONAL_LIGHT_COUNT];
 CBUFFER_END
 
 struct a2v
@@ -49,11 +51,21 @@ struct v2f
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
-Light GetDirectionalLight(int index)
+DirectionalShadowData GetDirectionShadowData(int lightIndex)
+{
+    DirectionalShadowData d;
+    d.strength = _DirectionalLightShadowData[lightIndex].x;
+    d.texIndex = _DirectionalLightShadowData[lightIndex].y;
+    return d;
+}
+
+Light GetDirectionalLight(int index, Surface surfaceWS)
 {
     Light light;
     light.color = _DirectionalLightColors[index].rgb;
     light.direction = _DirectionalLightDirections[index].xyz;
+    DirectionalShadowData shadowData = GetDirectionShadowData(index);
+    light.attenuation = GetDirectionalShadowAttenuation(shadowData, surfaceWS);
     return light;
 }
 
@@ -62,12 +74,12 @@ int GetDirectionalLightCount()
     return _DirectionalLightCount;
 }
 
-float3 GetLighting(Surface surface, BRDF brdf)
+float3 GetLighting(Surface surfaceWS, BRDF brdf)
 {
     float3 color = 0.0;
     for(int i = 0; i < GetDirectionalLightCount(); i++)
     {
-        color += GetLighting(surface, brdf, GetDirectionalLight(i));
+        color += GetLighting(surfaceWS, brdf, GetDirectionalLight(i, surfaceWS));
     }
     return color;
 }
@@ -110,6 +122,7 @@ float4 frag(v2f input) : SV_TARGET
 {
     UNITY_SETUP_INSTANCE_ID(input)
     Surface surface;
+    surface.position = input.positionWS;
     surface.normal = normalize(input.normalWS);
     float4 baseMap = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.baseUV);
     float4 baseColor = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseColor);

@@ -23,8 +23,10 @@ public partial class CameraRenderer
         #endif
         if (!Cull(shadowSettings.maxDistance)) return;
         
-        lighting.Steup( context, cullingResults, shadowSettings );
+        buffer.BeginSample( SampleName );
         ExecuteBuffer();
+        lighting.Steup( context, cullingResults, shadowSettings );
+        buffer.EndSample( SampleName );
         Steup();
         DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
         #if UNITY_EDITOR

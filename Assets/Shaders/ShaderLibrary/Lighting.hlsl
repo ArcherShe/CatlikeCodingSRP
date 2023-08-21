@@ -1,11 +1,13 @@
 #ifndef CUSTOM_LIGHTING_INCLUDED
 #define CUSTOM_LIGHTING_INCLUDED
 #include "Surface.hlsl"
+#include "Shadow.hlsl"
 
 struct Light
 {
     float3 color;
     float3 direction;
+    float attenuation;
 };
 
 struct BRDF
@@ -38,7 +40,7 @@ float3 DirectBDRF(Surface surface, BRDF brdf, Light light)
 
 float3 IncomingLight(Surface surface, Light light)
 {
-    return saturate(dot(surface.normal, light.direction))* light.color;
+    return saturate(dot(surface.normal, light.direction)) * light.color * light.attenuation;
 }
 
 float3 GetLighting(Surface surface, BRDF brdf, Light light)
