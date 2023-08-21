@@ -10,7 +10,7 @@ Shader "CustomRP/Lit"{
         [Enum(UnityEngine.Rendering.BlendMode)]_SrcBlend("Src Blend", Float) = 1
         [Enum(UnityEngine.Rendering.BlendMode)]_DstBlend("Dst Blend", Float) = 0
         [Enum(Off, 0, On, 1)]_ZWrite("Z Write", Float) = 1
-        [Toggle(_PREMULTIPLY_ALPHA)]_PREMULTIPLY_ALPHA("Premultiply Alpah", Float)= 1
+        [Toggle(_PREMULTIPLY_ALPHA)]_PremultiplyAlpha("Premultiply Alpah", Float)= 1
     }
     
     CustomEditor "CustomShaderGUI"
