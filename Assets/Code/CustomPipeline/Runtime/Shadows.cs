@@ -8,12 +8,14 @@ using Color = UnityEngine.Color;
 public class Shadows
 {
     private const string bufferName = "Shadow";
-    private const int maxShadowedDirectionalLightCount = 4;
+    private const int maxShadowedDirectionalLightCount = 4, maxCascades = 4;
 
-    private static int directionalShadowTexId = Shader.PropertyToID( "_DirectionalShadowTex" );
+    private static int dirShadowAtlasId = Shader.PropertyToID( "_DirectionalShadowAtlas" );
     private static int directionalShadowMatricesId = Shader.PropertyToID( "_DirectionalShadowMatrices" );
-
-    private static Matrix4x4[] directionalShadowMatrices = new Matrix4x4[maxShadowedDirectionalLightCount];
+    private static int cascadeCountId  = Shader.PropertyToID( "_CascadeCount" );
+    private static int cascadeCullingSpheresId  = Shader.PropertyToID( "_CascadeCullingSpheres" );
+    private static Vector4[] cascadeCullingSpheres = new Vector4[maxCascades];
+    private static Matrix4x4[] directionalShadowMatrices = new Matrix4x4[maxShadowedDirectionalLightCount * maxCascades];
 
     private CommandBuffer buffer = new CommandBuffer() { name = bufferName };
     private ScriptableRenderContext context;
@@ -21,8 +23,7 @@ public class Shadows
     private ShadowSettings shadowSettings;
     private int shadowedDirectionalLightCount;
 
-    private ShadowedDirectionalLight[] shadowedDirectionalLights =
-        new ShadowedDirectionalLight[maxShadowedDirectionalLightCount];
+    private ShadowedDirectionalLight[] shadowedDirectionalLights = new ShadowedDirectionalLight[maxShadowedDirectionalLightCount];
 
     struct ShadowedDirectionalLight
     {
@@ -31,10 +32,10 @@ public class Shadows
 
     public void Step( ScriptableRenderContext context, CullingResults cullingResults, ShadowSettings shadowSettings )
     {
-        shadowedDirectionalLightCount = 0;
         this.context = context;
         this.cullingResults = cullingResults;
         this.shadowSettings = shadowSettings;
+        shadowedDirectionalLightCount = 0;
     }
 
     public void ExecuteBuffer()
@@ -50,10 +51,12 @@ public class Shadows
             light.shadowStrength > 0f && cullingResults.GetShadowCasterBounds( visibleLightIndex, out Bounds b ) )
         {
             shadowedDirectionalLights[shadowedDirectionalLightCount] = new ShadowedDirectionalLight()
-                { visibleLightIndex = visibleLightIndex };
-            var ret = new Vector2( light.shadowStrength, shadowedDirectionalLightCount );
-            shadowedDirectionalLightCount++;
-            return ret;
+            {
+                visibleLightIndex = visibleLightIndex
+            };
+            return new Vector2( light.shadowStrength,
+                                shadowSettings.dirrectional.cascadeCount * shadowedDirectionalLightCount++
+                              );
         }
 
         return Vector2.zero;
@@ -68,63 +71,83 @@ public class Shadows
         else
         {
             //不需要阴影时获得 1×1 虚拟纹理，避免额外的着色器变体
-            buffer.GetTemporaryRT( directionalShadowTexId, 1, 1, 32, FilterMode.Bilinear,
+            buffer.GetTemporaryRT( dirShadowAtlasId, 1, 1, 32, FilterMode.Bilinear,
                                    RenderTextureFormat.Shadowmap );
         }
     }
 
     public void Cleanup()
     {
-        buffer.ReleaseTemporaryRT( directionalShadowTexId );
+        buffer.ReleaseTemporaryRT( dirShadowAtlasId );
         ExecuteBuffer();
     }
 
     //渲染所有平行光阴影
     void RenderDirectionalShadows()
     {
-        int split = shadowedDirectionalLightCount <= 1 ? 1 : 2;
-        int size = (int)shadowSettings.dirrectional.atalsSize / split;
-        buffer.GetTemporaryRT( directionalShadowTexId, size, size, 32, FilterMode.Bilinear,
+        int atlasSize = (int)shadowSettings.dirrectional.atalsSize;
+        buffer.GetTemporaryRT( dirShadowAtlasId, atlasSize, atlasSize, 32, FilterMode.Bilinear,
                                RenderTextureFormat.Shadowmap );
         //指定渲染数据储存在RT中
-        buffer.SetRenderTarget( directionalShadowTexId, RenderBufferLoadAction.DontCare,
-                                RenderBufferStoreAction.Store );
+        buffer.SetRenderTarget(dirShadowAtlasId,
+                               RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store
+                              );
         //清除深度缓冲区
         buffer.ClearRenderTarget( true, false, Color.clear );
         buffer.BeginSample( bufferName );
         ExecuteBuffer();
+
+        int tiles = shadowedDirectionalLightCount * shadowSettings.dirrectional.cascadeCount;
+        int split = tiles <= 1 ? 1 : tiles <= 4 ? 2 : 4;
+        int size = atlasSize / split;
         for( int i = 0; i < shadowedDirectionalLightCount; i++ )
         {
             RenderDirectionalShadows( i, size, split );
         }
+        buffer.SetGlobalInt( cascadeCountId, shadowSettings.dirrectional.cascadeCount );
+        buffer.SetGlobalVectorArray( cascadeCullingSpheresId, cascadeCullingSpheres );
         buffer.SetGlobalMatrixArray( directionalShadowMatricesId, directionalShadowMatrices );
         buffer.EndSample( bufferName );
         ExecuteBuffer();
     }
 
     //渲染平行光阴影
-    void RenderDirectionalShadows( int index, int texSize, int split )
+    void RenderDirectionalShadows( int index, int tileSize, int split )
     {
         ShadowedDirectionalLight light = shadowedDirectionalLights[index];
         var shadowSettings = new ShadowDrawingSettings( cullingResults, light.visibleLightIndex );
-        cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives( light.visibleLightIndex, 0, 1,
-                                                                             Vector3.zero, texSize, 0f,
-                                                                             out Matrix4x4 viewMatrix,
-                                                                             out Matrix4x4 projectionMatrix,
-                                                                             out ShadowSplitData splitData );
-        shadowSettings.splitData = splitData;
-        var offset = SetTileVieport( index, texSize, split );
-        directionalShadowMatrices[index] = ConvertToShadowTexMatrix( projectionMatrix * viewMatrix, offset, split );
-        buffer.SetViewProjectionMatrices( viewMatrix, projectionMatrix );
-        ExecuteBuffer();
-        //绘制阴影
-        context.DrawShadows( ref shadowSettings );
+        var cascadeCount = this.shadowSettings.dirrectional.cascadeCount;
+        var tileOffset = index * cascadeCount;
+        var ratios = this.shadowSettings.dirrectional.CascadeRatios;
+        for( int i = 0; i < cascadeCount; i++ )
+        {
+            cullingResults.ComputeDirectionalShadowMatricesAndCullingPrimitives( light.visibleLightIndex, i, cascadeCount,
+                                                                                    ratios, tileSize, 0f,
+                                                                                    out Matrix4x4 viewMatrix,
+                                                                                    out Matrix4x4 projectionMatrix,
+                                                                                    out ShadowSplitData splitData );
+        
+            shadowSettings.splitData = splitData;
+            if( index == 0 )
+            {
+                var cullingSphere = splitData.cullingSphere;
+                cullingSphere.w *= cullingSphere.w;
+                cascadeCullingSpheres[i] = cullingSphere;
+            }
+            var tileIndex = tileOffset + i;
+            directionalShadowMatrices[tileIndex] = ConvertToShadowTexMatrix( projectionMatrix * viewMatrix, 
+                                                                             SetTileVieport( tileIndex, tileSize, split ), split );
+            buffer.SetViewProjectionMatrices( viewMatrix, projectionMatrix );
+            ExecuteBuffer();
+            //绘制阴影
+            context.DrawShadows( ref shadowSettings );
+        }
     }
 
-    Vector2 SetTileVieport( int index, float texSize, int split )
+    Vector2 SetTileVieport( int index, float tileSize, int split )
     {
         Vector2 offset = new Vector2( index % split, index / split );
-        buffer.SetViewport( new Rect( offset.x * texSize, offset.y * texSize, texSize, texSize ) );
+        buffer.SetViewport( new Rect( offset.x * tileSize, offset.y * tileSize, tileSize, tileSize ) );
         return offset;
     }
 

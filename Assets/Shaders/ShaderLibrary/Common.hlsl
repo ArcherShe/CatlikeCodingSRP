@@ -20,4 +20,9 @@
 // {
 //     return mul(unity_MatrixVP, float4(positionOS, 1.0));
 // }
+
+float DistanceSquared(float3 pA, float3 pB) {
+    return dot(pA - pB, pA - pB);
+} 
+
 #endif

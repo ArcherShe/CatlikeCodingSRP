@@ -18,4 +18,8 @@ MonoBehaviour:
   shadowSettings:
     maxDistance: 10
     dirrectional:
-      atalsSize: 1024
+      atalsSize: 512
+      cascadeCount: 4
+      cascadeRatio1: 0.433
+      cascadeRatio2: 0.785
+      cascadeRatio3: 1

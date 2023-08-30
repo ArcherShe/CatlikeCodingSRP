@@ -3,11 +3,11 @@
 #include "../ShaderLibrary/Common.hlsl"
 #include "../ShaderLibrary/Surface.hlsl"
 #include "../ShaderLibrary/Lighting.hlsl"
+#include "../ShaderLibrary/UnityInput.hlsl"
+#include "../ShaderLibrary/Shadow.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
-#include "../ShaderLibrary/UnityInput.hlsl"
-#include "../ShaderLibrary/Shadow.hlsl"
 
 TEXTURE2D(_BaseMap);
 SAMPLER(sampler_BaseMap);
@@ -51,21 +51,22 @@ struct v2f
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
-DirectionalShadowData GetDirectionShadowData(int lightIndex)
+DirectionalShadowData GetDirectionShadowData(int lightIndex, ShadowData shadowData)
 {
     DirectionalShadowData d;
     d.strength = _DirectionalLightShadowData[lightIndex].x;
-    d.texIndex = _DirectionalLightShadowData[lightIndex].y;
+    d.tileIndex = _DirectionalLightShadowData[lightIndex].y + shadowData.cascadeIndex;
     return d;
 }
 
-Light GetDirectionalLight(int index, Surface surfaceWS)
+Light GetDirectionalLight(int index, Surface surfaceWS, ShadowData shadowData)
 {
     Light light;
     light.color = _DirectionalLightColors[index].rgb;
     light.direction = _DirectionalLightDirections[index].xyz;
-    DirectionalShadowData shadowData = GetDirectionShadowData(index);
-    light.attenuation = GetDirectionalShadowAttenuation(shadowData, surfaceWS);
+    DirectionalShadowData dirShadowData  = GetDirectionShadowData(index, shadowData);
+    light.attenuation = GetDirectionalShadowAttenuation(dirShadowData , surfaceWS);
+    light.attenuation = shadowData.cascadeIndex * 0.25;
     return light;
 }
 
@@ -76,10 +77,11 @@ int GetDirectionalLightCount()
 
 float3 GetLighting(Surface surfaceWS, BRDF brdf)
 {
+    ShadowData shadowData = GetShadowData(surfaceWS);
     float3 color = 0.0;
     for(int i = 0; i < GetDirectionalLightCount(); i++)
     {
-        color += GetLighting(surfaceWS, brdf, GetDirectionalLight(i, surfaceWS));
+        color += GetLighting(surfaceWS, brdf, GetDirectionalLight(i, surfaceWS, shadowData));
     }
     return color;
 }

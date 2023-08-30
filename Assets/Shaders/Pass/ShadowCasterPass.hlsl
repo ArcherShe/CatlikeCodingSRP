@@ -1,12 +1,8 @@
 #ifndef CUSTOM_LIT_PASS_INCLUDED
 #define CUSTOM_LIT_PASS_INCLUDED
 #include "../ShaderLibrary/Common.hlsl"
-#include "../ShaderLibrary/Surface.hlsl"
-#include "../ShaderLibrary/Lighting.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
-#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
-#include "../ShaderLibrary/UnityInput.hlsl"
 
 TEXTURE2D(_BaseMap);
 SAMPLER(sampler_BaseMap);
@@ -39,8 +35,9 @@ v2f vert(a2v input)
     UNITY_TRANSFER_INSTANCE_ID(input, o);
     float3 positionWS = TransformObjectToWorld(input.positionOS);
     o.positionCS = TransformWorldToHClip(positionWS);
+    
     float4 baseST = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseMap_ST);
-    o.baseUV = input.baseUV.xy * baseST.xy + baseST.zw;
+    o.baseUV = input.baseUV * baseST.xy + baseST.zw;
     return o;
 }
     
@@ -51,8 +48,7 @@ void frag(v2f input)
     float4 baseColor = UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _BaseColor);
     float4 base = baseMap * baseColor;
     #if defined(_CLIPPING)
-    clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
+        clip(base.a - UNITY_ACCESS_INSTANCED_PROP(UnityPerMaterial, _Cutoff));
     #endif
-    
 }
 #endif

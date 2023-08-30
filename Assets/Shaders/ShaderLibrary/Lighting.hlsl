@@ -43,8 +43,8 @@ float3 IncomingLight(Surface surface, Light light)
     return saturate(dot(surface.normal, light.direction)) * light.color * light.attenuation;
 }
 
-float3 GetLighting(Surface surface, BRDF brdf, Light light)
+float3 GetLighting(Surface surfaceWS, BRDF brdf, Light light)
 {
-    return IncomingLight(surface, light) * DirectBDRF(surface, brdf, light);
+    return IncomingLight(surfaceWS, light) * DirectBDRF(surfaceWS, brdf, light);
 }
 #endif
